@@ -2,6 +2,9 @@ import logging
 import os
 import pandas as pd
 from zenml import step
+import os
+from dotenv import load_dotenv
+load_dotenv(dotenv_path='config.env')
 
 
 class DataIngestionError(Exception):
@@ -49,7 +52,7 @@ class IngestData:
 
 
 @step
-def ingest_data(file_path: str = "./data/data.csv") -> pd.DataFrame:
+def ingest_data(file_path: str = os.getenv('DATA_PATH')) -> pd.DataFrame:
     """
     ZenML step to ingest data.
 
