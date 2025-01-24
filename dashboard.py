@@ -228,6 +228,37 @@ retention_rate_map['retention_rate'] = (retention_rate_map['customer_unique_id_x
 retention_rate_map.columns = ['city', 'lat', 'lng', 'repeat_customers', 'total_customers', 'retention_rate']
 
 
+
+# . Revenue by State and Customer Density
+# Revenue by state
+revenue_by_state = df.groupby('customer_state')['payment_value'].sum().reset_index()
+revenue_by_state = revenue_by_state.sort_values('payment_value', ascending=False)
+
+# Add "Others" category for states outside the top 5
+top_5_states = revenue_by_state.head(5)
+others = pd.DataFrame({
+    'customer_state': ['Others'],
+    'payment_value': [revenue_by_state.iloc[5:]['payment_value'].sum()]
+})
+revenue_with_others = pd.concat([top_5_states, others], ignore_index=True)
+
+
+
+df['order_delivered_customer_date'] = pd.to_datetime(df['order_delivered_customer_date'])
+df['order_purchase_timestamp'] = pd.to_datetime(df['order_purchase_timestamp'])
+
+# Calculate delivery time
+df['delivery_time'] = (df['order_delivered_customer_date'] - df['order_purchase_timestamp']).dt.days
+
+# Delivery time by state
+
+delivery_time_by_state = df.groupby('customer_state')['delivery_time'].mean().reset_index()
+delivery_time_by_state = delivery_time_by_state.sort_values('delivery_time', ascending=True)
+avg_delivery_time= df['delivery_time'].mean()
+
+# Delivery time by product category
+delivery_time_by_category = df.groupby('product_category_name_english')['delivery_time'].mean().reset_index()
+delivery_time_by_category = delivery_time_by_category.sort_values('delivery_time', ascending=True).head(20)
 # Initialize Dash app
 app = dash.Dash(__name__)
 
@@ -449,7 +480,7 @@ app.layout = html.Div(style=dark_theme_style, children=[
                 title="Customer Retention by City",
                 color_continuous_scale='Blues',
                 zoom=4
-            ).update_layout(template="plotly_dark",mapbox_style="carto-darkmatter")
+            ).update_layout(template="plotly_dark",mapbox_style="carto-darkmatter",height=700 )
         )
     ]),
     # Order Cancellation Rate and Its Impact on Seller Performance
@@ -546,7 +577,7 @@ app.layout = html.Div(style=dark_theme_style, children=[
                         color='payment_type',
                         labels={'product_category_name_english': 'Product Category', 'payment_value': 'Count', 'payment_type': 'Payment Method'},
                         title="Payment Methods by Product Category",
-                        color_discrete_sequence=custom_colors[2:]
+                        color_discrete_sequence=custom_colors
                     ).update_layout(template="plotly_dark")
                 ),
             ],style={'width': '48%', 'padding': '10px'}),
@@ -602,9 +633,76 @@ app.layout = html.Div(style=dark_theme_style, children=[
                 title="Profit and Revenue by City",
                 color_continuous_scale=rating_colors,
                 zoom=4
-            ).update_layout(template="plotly_dark",mapbox_style="carto-darkmatter")
+            ).update_layout(template="plotly_dark",mapbox_style="carto-darkmatter",height=700 )
         )
     ]),
+
+    html.Div([
+        html.Div([
+            dcc.Graph(
+                figure=px.bar(
+                    revenue_by_state,
+                    x='customer_state',
+                    y='payment_value',
+                    labels={'customer_state': 'State', 'payment_value': 'Total Revenue ($)'},
+                    title="Total Revenue by State",
+                    color_discrete_sequence=['#008F8C']
+                ).update_layout(template="plotly_dark")
+            )
+        ],style={'width': '48%', 'padding': '10px'}),
+
+        html.Div([
+            dcc.Graph(
+                figure=px.pie(
+                revenue_with_others,
+                names='customer_state',
+                values='payment_value',
+                title="Revenue Distribution by State (Top 5 and Others)",
+                labels={'customer_state': 'State', 'payment_value': 'Revenue ($)'}
+            ).update_layout(template="plotly_dark").update_traces(textinfo='percent+label',marker=dict(colors=custom_colors))
+        )
+        ],style={'width': '48%', 'padding': '10px'}),
+
+    ],style={'display': 'flex', 'flex-direction': 'row', 'justify-content': 'space-between', 'flex-wrap': 'wrap'}
+    ),
+
+    html.Div([
+        html.Div([
+                html.H2(f"Average Delivery Time {avg_delivery_time:,.2f} days",
+                style={
+                    'color': '#eee',
+                    'padding': '15px',
+                }),
+
+            dcc.Graph(
+                figure=px.bar(
+                delivery_time_by_state,
+                x='customer_state',
+                y='delivery_time',
+                labels={'customer_state': 'State', 'delivery_time': 'Average Delivery Time (days)'},
+                title="Average Delivery Time by State",
+                color_discrete_sequence=['#04BF9D']
+
+            ).update_layout(template="plotly_dark")
+            )
+        ],style={'width': '48%', 'padding': '10px'}),
+
+        html.Div([
+            dcc.Graph(
+                figure=px.bar(
+                delivery_time_by_category,
+                x='product_category_name_english',
+                y='delivery_time',
+                labels={'product_category_name_english': 'Category', 'delivery_time': 'Average Delivery Time (days)'},
+                title="Average Delivery Time by Category",
+                color_discrete_sequence=['#BF665E']
+
+            ).update_layout(template="plotly_dark",height=550)
+                )
+        ],style={'width': '48%', 'padding': '10px'}),
+
+    ],style={'display': 'flex', 'flex-direction': 'row', 'justify-content': 'space-between', 'flex-wrap': 'wrap'}
+    ),
 
 
 
