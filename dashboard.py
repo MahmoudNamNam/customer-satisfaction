@@ -4,7 +4,7 @@ import plotly.express as px
 import pandas as pd
 
 # Load your dataset
-df = pd.read_csv("./data/data_geo.csv")  # Replace with your actual dataset path
+df = pd.read_csv("./data/data_geo.csv")
 
 # Convert order_purchase_timestamp to datetime
 df['order_purchase_timestamp'] = pd.to_datetime(df['order_purchase_timestamp'])
